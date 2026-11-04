@@ -33,7 +33,7 @@ export default async function CompetitionsIndex() {
   })).filter((s) => s.pages.length > 0);
 
   return (
-    <SeoPage crumbs={[{ name: "Penaltı Tahmin", href: "/" }, { name: "Ligler ve turnuvalar", href: "/ligler" }]}>
+    <SeoPage crumbs={[{ name: "GoalSpot", href: "/" }, { name: "Ligler ve turnuvalar", href: "/ligler" }]}>
       <h1>Lig ve turnuva penaltıları</h1>
       <p>
         Havuzda {pages.length} turnuva ve sezondan {total} gerçek penaltı var. Her sayfada o sezonun

@@ -5,7 +5,7 @@
 export const tr = {
   // Genel
   "lang.name": "Türkçe",
-  "app.title": "Penaltı Tahmin",
+  "app.title": "GoalSpot",
   "common.points": "puan",
   "common.back": "Ana ekrana dön",
   "common.change": "değiştir",

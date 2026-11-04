@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 export default async function PlayersIndex() {
   const players = indexedPlayers(await loadPool());
   return (
-    <SeoPage crumbs={[{ name: "Penaltı Tahmin", href: "/" }, { name: "Oyuncular", href: "/oyuncular" }]}>
+    <SeoPage crumbs={[{ name: "GoalSpot", href: "/" }, { name: "Oyuncular", href: "/oyuncular" }]}>
       <h1>Penaltı kullanan oyuncular</h1>
       <p>
         Havuzda en az {PLAYER_PAGE_MIN} penaltı kullanmış {players.length} oyuncu. Her sayfada

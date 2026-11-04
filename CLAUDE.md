@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Proje
 
-Penaltı Tahmin: kullanıcı, bir penaltının kalenin hangi bölgesine (3×3) ve hangi tiple
+GoalSpot (eski adıyla Penaltı Tahmin): kullanıcı, bir penaltının kalenin hangi bölgesine (3×3) ve hangi tiple
 (plase / sert / panenka) atılacağını tahmin eder; vuruş sonra 3D sahnede oynatılır. Next.js 16
 (App Router) + React 19 + TypeScript, 3D için three.js + @react-three/fiber.
 
@@ -187,6 +187,27 @@ Vitest yapılandırması `vitest.config.mts` (`.mts` olmalı, `@` → `src`). Ne
   sıradaki penaltıya (son turda sonuçlara) kendiliğinden geçilir; "Hemen geç" beklemeyi atlar. Tur ekranının kendisi
   (`RoundView.tsx`) durumu dışarıdan alır; tek kişilik ve çok oyunculu mod onu paylaşır.
 
+### Marka: GoalSpot
+- Oyunun adı 4 Kasım 2026'da **GoalSpot** oldu (kullanıcı global bir ad istedi); "penaltı
+  tahmin oyunu" ifadesi başlık, açıklama ve SEO metinlerinde tür adı olarak kalır. Tanımlar
+  `src/lib/brand.tsx` (`BRAND`, `BrandMark`: kale çerçevesi + 3×3 ağ + sağ alt bölgede altın
+  spot; düz renk, satori uyumlu) ve `src/components/Logo.tsx` (işaret + iki renkli yazı; girişte
+  `<h1>` içinde, metin gerçek metindir). Statik kopyalar `public/brand/goalspot-mark.svg` ve
+  `goalspot-logo.svg`. Favicon, Apple simgesi, OG ve tanıtım görselleri aynı işareti kullanır;
+  3D reklam bandının varsayılan yazısı "GOALSPOT". `app.title` üç dilde "GoalSpot".
+- `localStorage` anahtarları (`penalti-tahmin:*`) ve depo adı bilerek değişmedi (oyuncu verisi
+  kaybolmasın). Alan adı henüz yok; görsellerde `SITE_HOST` (yayın adresinden) boşsa adres yazılmaz.
+
+### Pazarlama paketi
+- `marketing/README.md`: konumlandırma, 30 sn video senaryosu (çekim tablosu), X / Instagram /
+  TikTok / Shorts metinleri, İngilizce sürüm, iki haftalık takvim, ölçüm notları.
+- Görseller `src/app/promo/[kind]/route.tsx` ile `next/og` ImageResponse'tan üretilir
+  (square 1080², story 1080×1920, thumb 1280×720, banner 1500×500; yayında 404), `npm run
+  promo` çalışan dev sunucusundan `marketing/promo-*.png` olarak indirir. Alan adı
+  `DOMAIN` sabitinde; logolar `public/logos`'tan data URL olarak gömülür. Satori'nin
+  varsayılan yazı tipinde kalın ağırlık yok; başlıklar normal ağırlıkta çıkar.
+- Açık iş: sonuç ekranına "puanını paylaş" düğmesi (metin + görsel), UTM'li bağlantı ölçümü.
+
 ### Yayına alma (Docker)
 - `next.config.ts` → `output: "standalone"`. `Dockerfile` çok aşamalı (Node 26 alpine),
   `docker-compose.yml` app + Caddy (HTTPS, `Caddyfile`; SSE için `flush_interval -1`),
@@ -351,7 +372,7 @@ Vitest yapılandırması `vitest.config.mts` (`.mts` olmalı, `@` → `src`). Ne
   açılmadan önce o veri için izin alınmalı ya da veri çıkarılmalı.
 
 ### Reklam panosu (gelir alanı)
-- Kalenin arkasında, mavi "PENALTI TAHMİN" panosunun üstündeki duvar şeridinde kayan bant
+- Kalenin arkasında, mavi "GOALSPOT" panosunun üstündeki duvar şeridinde kayan bant
   (`AD_BAND` sabitleri `textures.ts`'te: 150 m genişlik, 1,1 m yükseklik, z=−8,7). İçerik
   `createAdBandTexture` ile tek bir uzun tuvale çizilir (yazı + görsel, en çok 8192 px; sığmazsa
   ölçek küçülür), doku `RepeatWrapping` ile bant boyunca tekrar eder ve `world.ts` her karede

@@ -12,6 +12,7 @@
     "import:fotmob": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-fotmob.mts",
     "logos": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/logos-manifest.mts",
     "logos:fetch": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/team-logos.mts && npm run logos",
+    "promo": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/promo.mts",
     "flags": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/flags.mts"
   },
   "dependencies": {

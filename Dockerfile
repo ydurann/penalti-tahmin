@@ -1,4 +1,4 @@
-# Penaltı Tahmin — üretim imajı (Next.js standalone çıktısı, Node 26).
+# GoalSpot — üretim imajı (Next.js standalone çıktısı, Node 26).
 #
 #   docker compose up -d --build      # bkz. DEPLOY.md
 #

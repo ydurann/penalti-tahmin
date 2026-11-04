@@ -55,7 +55,7 @@ export default async function CompetitionPageView({ params }: Params) {
   const enough = page.tally.total >= ROUNDS_PER_GAME;
 
   return (
-    <SeoPage crumbs={[{ name: "Penaltı Tahmin", href: "/" }, { name: "Ligler ve turnuvalar", href: "/ligler" }, { name: label, href: `/ligler/${page.slug}` }]}>
+    <SeoPage crumbs={[{ name: "GoalSpot", href: "/" }, { name: "Ligler ve turnuvalar", href: "/ligler" }, { name: label, href: `/ligler/${page.slug}` }]}>
       <header className={styles.pageHead}>
         <CompetitionLogo competition={page.competition} season={page.season} height={44} />
         <div>
@@ -76,7 +76,7 @@ export default async function CompetitionPageView({ params }: Params) {
             Kayıtlar {formatDate(page.dates.from)} ile {formatDate(page.dates.to)} arasındaki maçlardan.
           </>
         )}{" "}
-        Penaltı Tahmin&apos;de bu penaltılar sana gerçek bağlamıyla gelir: oyuncu, takım, dakika ve skor.
+        GoalSpot&apos;ta bu penaltılar sana gerçek bağlamıyla gelir: oyuncu, takım, dakika ve skor.
         Topun kalenin hangi bölgesine ve nasıl atıldığını tahmin edersin; vuruş 3D sahnede oynar.
       </p>
 

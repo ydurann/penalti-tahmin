@@ -2,7 +2,7 @@ import type { Dictionary } from "./tr";
 
 export const de: Dictionary = {
   "lang.name": "Deutsch",
-  "app.title": "Elfmeter-Tipp",
+  "app.title": "GoalSpot",
   "common.points": "Punkte",
   "common.back": "Zur Startseite",
   "common.change": "ändern",

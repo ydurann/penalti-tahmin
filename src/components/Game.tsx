@@ -19,6 +19,7 @@ import { useLocale } from "@/i18n/LocaleProvider";
 import { AdSlot } from "./AdSlot";
 import { errorText, post, wait } from "./api";
 import { CompetitionBar, CompetitionSheet } from "./CompetitionSheet";
+import { Logo } from "./Logo";
 import styles from "./Game.module.css";
 import {
   ArrowRightIcon,
@@ -341,7 +342,9 @@ export function Game({ competitions = [], footer, preselected = [] }: GameProps)
           <span className={styles.eyebrow}>
             {competitions.length > 0 ? t("intro.eyebrowReal") : t("intro.eyebrowSample")}
           </span>
-          <h1>{t("app.title")}</h1>
+          <h1 className={styles.logoTitle}>
+            <Logo size={56} />
+          </h1>
           <div className={styles.tagline}>
             <p>{t("intro.tagline")}</p>
             <button type="button" className={styles.howTo} onClick={() => setTutorialOpen(true)}>

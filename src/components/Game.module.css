@@ -153,6 +153,34 @@
   color: transparent;
 }
 
+/* GoalSpot logosu: işaret + iki renkli yazı; başlık olarak kullanıldığında degrade kapatılır. */
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32em;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: #f3f7f4;
+}
+
+.logoWord {
+  display: inline-flex;
+}
+
+.logoSpot {
+  color: #f3b623;
+}
+
+.intro h1.logoTitle {
+  display: flex;
+  justify-content: center;
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  color: #f3f7f4;
+}
+
 .intro p {
   max-width: 520px;
   color: var(--muted);

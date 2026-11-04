@@ -1,11 +1,12 @@
 import { ImageResponse } from "next/og";
-import { SITE_NAME } from "@/lib/site";
+import { BRAND, BrandMark } from "@/lib/brand";
+import { SITE_HOST } from "@/lib/site";
 
-export const alt = "Penaltı Tahmin: gerçek penaltıları tahmin et, 3D sahnede izle";
+export const alt = "GoalSpot: gerçek penaltıları tahmin et, 3D sahnede izle";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-/** Paylaşım görseli: gece stadyumu zemini, kale ve altın top, başlık ve slogan. */
+/** Paylaşım görseli: gece stadyumu zemini, GoalSpot logosu, slogan ve ligler. */
 export default function OpenGraphImage() {
   return new ImageResponse(
     (
@@ -17,47 +18,25 @@ export default function OpenGraphImage() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          gap: 18,
+          gap: 26,
           background: "linear-gradient(180deg, #050d09 0%, #0a1f13 55%, #0d2a19 100%)",
           color: "#f3f7f4",
           fontFamily: "sans-serif",
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            top: 70,
-            left: 420,
-            width: 360,
-            height: 200,
-            border: "10px solid rgba(243,247,244,0.85)",
-            borderBottom: "none",
-            borderRadius: "10px 10px 0 0",
-            display: "flex",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            top: 196,
-            left: 690,
-            width: 64,
-            height: 64,
-            borderRadius: 999,
-            background: "#f3b623",
-            boxShadow: "0 0 40px #f3b623",
-            display: "flex",
-          }}
-        />
-        <div style={{ marginTop: 230, fontSize: 92, fontWeight: 800, letterSpacing: -2, display: "flex" }}>
-          {SITE_NAME}
+        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
+          <BrandMark size={150} />
+          <div style={{ display: "flex", fontSize: 120, fontWeight: 800, letterSpacing: -4 }}>
+            <span>{BRAND.parts[0]}</span>
+            <span style={{ color: BRAND.spot }}>{BRAND.parts[1]}</span>
+          </div>
         </div>
-        <div style={{ fontSize: 34, color: "#b9c8be", display: "flex" }}>
-          Gerçek penaltıları tahmin et, 3D sahnede izle
+        <div style={{ fontSize: 36, color: "#b9c8be", display: "flex" }}>
+          Penaltı tahmin oyunu: gerçek penaltılar, 3D sahne
         </div>
         <div
           style={{
-            marginTop: 18,
+            marginTop: 10,
             padding: "10px 22px",
             borderRadius: 999,
             border: "2px solid rgba(47,180,92,0.7)",
@@ -70,6 +49,7 @@ export default function OpenGraphImage() {
         >
           SÜPER LİG · PREMIER LEAGUE · BUNDESLIGA · ŞAMPİYONLAR LİGİ
         </div>
+        {SITE_HOST && <div style={{ display: "flex", fontSize: 30, color: BRAND.spot, fontWeight: 800 }}>{SITE_HOST}</div>}
       </div>
     ),
     size,

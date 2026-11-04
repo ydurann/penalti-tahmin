@@ -1,4 +1,4 @@
-# Penaltı Tahmin
+# GoalSpot (Penaltı Tahmin)
 
 Penaltının kalenin neresine ve nasıl atılacağını tahmin etme oyunu.
 

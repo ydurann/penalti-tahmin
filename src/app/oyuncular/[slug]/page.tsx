@@ -48,7 +48,7 @@ export default async function PlayerPageView({ params }: Params) {
   const competitionIds = player.competitions.map((c) => c.id);
 
   return (
-    <SeoPage crumbs={[{ name: "Penaltı Tahmin", href: "/" }, { name: "Oyuncular", href: "/oyuncular" }, { name: player.name, href: `/oyuncular/${player.slug}` }]}>
+    <SeoPage crumbs={[{ name: "GoalSpot", href: "/" }, { name: "Oyuncular", href: "/oyuncular" }, { name: player.name, href: `/oyuncular/${player.slug}` }]}>
       <header className={styles.pageHead}>
         <TeamBadge name={player.teams[0]} size={48} />
         <div>

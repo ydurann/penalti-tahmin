@@ -1,4 +1,4 @@
-# Penaltı Tahmin — tek sunucuda uygulama + Caddy (HTTPS). Kurulum: DEPLOY.md
+# GoalSpot — tek sunucuda uygulama + Caddy (HTTPS). Kurulum: DEPLOY.md
 services:
   app:
     build:

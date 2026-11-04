@@ -18,7 +18,7 @@ interface SeoIntroProps {
 
 const FAQ: { q: string; a: string }[] = [
   {
-    q: "Penaltı Tahmin nasıl oynanır?",
+    q: "GoalSpot nasıl oynanır?",
     a: `Her turda gerçek bir penaltı gelir: oyuncu, takım, dakika, skor ve oyuncunun önceki penaltılarının yön dağılımı gösterilir. Kalede dokuz bölgeden birini ya da "Dışarı"yı ve vuruş tipini (plase, sert, panenka) seçip kilitlersin; vuruş 3D sahnede oynar ve puanın hesaplanır. Bir oyun ${ROUNDS_PER_GAME} penaltıdır, her penaltı için ${ROUND_TIME_MS / 1000} saniye vardır.`,
   },
   {
@@ -71,7 +71,7 @@ export function SeoIntro({ competitions }: SeoIntroProps) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <h2 id="seo-title">Online penaltı tahmin oyunu: gerçek penaltılar, 3D sahne</h2>
       <p>
-        Penaltı Tahmin, futbolun en gergin anını oyuna çeviren ücretsiz bir penaltı oyunudur. Harry
+        GoalSpot, futbolun en gergin anını oyuna çeviren ücretsiz bir penaltı tahmin oyunudur. Harry
         Kane, Mauro Icardi ya da Kylian Mbappé topun başına geçtiğinde kalecinin yerine sen karar
         verirsin: top sol alta mı, sağ üste mi, ortaya mı gidecek; vuruş plase mi, sert mi, yoksa bir
         panenka mı? Tahminini kilitledikten sonra gerçek vuruş 3D stadyumda oynar ve ne kadar

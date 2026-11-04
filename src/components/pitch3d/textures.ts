@@ -335,9 +335,9 @@ export function createAdBoardTexture(): THREE.CanvasTexture {
   ctx.font = "700 40px system-ui, Arial, sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";
-  ctx.fillText("PENALTI TAHMİN", 256, 34);
+  ctx.fillText("GOALSPOT", 256, 34);
   ctx.fillStyle = "#f2b632";
-  ctx.fillText("PENALTI TAHMİN", 768, 34);
+  ctx.fillText("GOALSPOT", 768, 34);
   const texture = finish(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.repeat.set(7, 1);
@@ -363,7 +363,7 @@ export interface AdBandItem {
  * bölünür). Hiç reklam yoksa oyunun adı yazılır.
  */
 export function createAdBandTexture(items: AdBandItem[]): THREE.CanvasTexture {
-  const list = items.length > 0 ? items : [{ text: "PENALTI TAHMİN", image: null }];
+  const list = items.length > 0 ? items : [{ text: "GOALSPOT", image: null }];
   const gap = 140;
   const pad = 40;
   const font = "700 120px system-ui, Arial, sans-serif";
