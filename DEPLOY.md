@@ -18,21 +18,24 @@ kopya** çalışmalıdır; sunucusuz (Vercel vb.) ortam uygun değildir.
 git clone <depo adresi> penalti-tahmin
 cd penalti-tahmin
 cp .env.production.example .env.production   # doldur: SITE_DOMAIN, NEXT_PUBLIC_SITE_URL, ADMIN_SECRET
-mkdir -p data public/models public/logos
+mkdir -p data public/models
 ```
 
-Git dışı klasörler yerel bilgisayardan kopyalanır (`scp` ya da `rsync`):
+Logolar depodadır, `git clone` ile gelir. Git dışı kalan tek büyük şey Mixamo model
+dosyalarıdır; yerel bilgisayardan kopyalanır (Windows PowerShell, `scp` yerleşik):
 
 | Yerel | Sunucu | Not |
 |---|---|---|
 | `public/models/*.fbx` | `public/models/` | Zorunlu; yoksa kapsül figürler oynar. Yayından önce GLB'ye küçültülmeli. |
-| `public/logos/` | `public/logos/` | Kulüp ve turnuva logoları; yoksa baş harfli rozet. |
-| `data/` | `data/` | Varsa mevcut sıralama ve reklam verisi. |
+| `data/` | `data/` | Varsa mevcut sıralama ve reklam verisi (ilk kurulumda gerekmez). |
 
-```bash
-rsync -av --progress public/models/ kullanici@sunucu:~/penalti-tahmin/public/models/
-rsync -av --progress public/logos/  kullanici@sunucu:~/penalti-tahmin/public/logos/
+```powershell
+scp -r D:\Penalti-Tahmin-Project\penalti-tahmin\public\models root@SUNUCU_IP:/root/penalti-tahmin/public/
 ```
+
+157 MB'lık kopya bağlantı hızına göre birkaç dakika sürer. Modeller değişince aynı komut
+yeter; Docker imajı yeniden kurulmaz (volume ile bağlı). Linux/macOS'ta `rsync -av --progress`
+aynı işi yapar ve yalnızca değişen dosyaları gönderir.
 
 ## 3. Başlatma
 
@@ -53,7 +56,7 @@ git pull
 docker compose up -d --build
 ```
 
-Model ya da logo dosyası değişince yalnızca `rsync` yeter; imaj yeniden kurulmaz.
+Model dosyası değişince yalnızca `scp` yeter; imaj yeniden kurulmaz.
 Yeni lig verisi (`npm run import:fotmob`) yerelde üretilip commit edilir; sunucuda imaj
 yeniden kurulunca gelir.
 

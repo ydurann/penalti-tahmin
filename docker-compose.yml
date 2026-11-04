@@ -14,9 +14,8 @@ services:
     volumes:
       # Kalıcı veri: sıralamalar, challenge haftaları, reklamlar, elle girilen penaltılar.
       - ./data:/app/data
-      # Git dışı büyük dosyalar; imaj yeniden kurulmadan güncellenebilir.
+      # Git dışı model dosyaları; imaj yeniden kurulmadan güncellenebilir (logolar depodadır).
       - ./public/models:/app/public/models:ro
-      - ./public/logos:/app/public/logos:ro
     expose:
       - "3000"
 

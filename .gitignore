@@ -50,5 +50,5 @@ next-env.d.ts
 # haftalik challenge tablolari (calisma verisi)
 /data/
 
-# takim logolari marka hakkiyla korunur; dosyalari kullanici koyar
-/public/logos/
+# takim ve turnuva logolari depoda (ozel depo; marka hakki kulup ve liglerde, kullanici
+# kucuk logolarin kabul edilebilir risk olduguna karar verdi, 4 Kasim 2026)

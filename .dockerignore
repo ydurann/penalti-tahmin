@@ -6,7 +6,6 @@ data
 data-src
 assets-src
 public/models
-public/logos
 coverage
 *.log
 .env*

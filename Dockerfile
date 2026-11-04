@@ -31,7 +31,7 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
 RUN addgroup -S app && adduser -S app -G app \
-  && mkdir -p /app/data/manual /app/public/models /app/public/logos /app/src \
+  && mkdir -p /app/data/manual /app/public/models /app/src \
   && chown -R app:app /app
 
 COPY --from=build --chown=app:app /app/.next/standalone ./

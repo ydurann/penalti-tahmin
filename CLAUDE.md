@@ -195,8 +195,9 @@ Vitest yapılandırması `vitest.config.mts` (`.mts` olmalı, `@` → `src`). Ne
   sembolik bağ (`/app/src/data` → `/app/data/manual`), ilk açılışta `/app/seed` kopyasından
   oluşturulur. `manualStore` yolu bilerek sabit: değişken yol Next'in dosya izleyicisini bütün
   projeyi kopyalamaya itiyordu (standalone 2 GB); `next.config.ts`'te
-  `outputFileTracingExcludes` ham veri, model ve `data/` klasörlerini dışarıda tutar. Model ve
-  logo klasörleri imaja girmez (`.dockerignore`), salt okunur volume ile bağlanır.
+  `outputFileTracingExcludes` ham veri, model ve `data/` klasörlerini dışarıda tutar. Model
+  klasörü imaja girmez (`.dockerignore`), salt okunur volume ile bağlanır; logolar depoda
+  olduğundan imaja `public/` ile girer.
 - Uygulama tek örnek çalışmalı (bellek içi oyun/oda durumu). Yerelde Docker yok; imaj sunucuda
   kurulur, yerelde yalnızca standalone derleme doğrulanır.
 
@@ -248,8 +249,9 @@ Vitest yapılandırması `vitest.config.mts` (`.mts` olmalı, `@` → `src`). Ne
   bunları gerçek oyuncu gibi göstermeyi istedi; arayüzde ayırt edici işaret yok.
 
 ### Takım logoları
-- Logolar `public/logos/<slug>.svg|png` dosyalarından okunur; klasör git dışıdır (marka
-  hakkı), dosyaları kullanıcı koyar. Slug takım adından türetilir (`src/game/teams.ts` →
+- Logolar `public/logos/<slug>.svg|png` dosyalarından okunur. Klasör 4 Kasım 2026'dan beri
+  depodadır (özel depo, ~1,7 MB; sunucuya `git clone` ile gider). Marka hakkı kulüp ve
+  liglerdedir; herkese açık depo yapılacaksa klasör yeniden `.gitignore`'a alınmalı. Slug takım adından türetilir (`src/game/teams.ts` →
   `teamSlug`: "Fenerbahçe" → `fenerbahce`, "Côte d'Ivoire" → `cote-d-ivoire`).
 - `npm run logos` klasörü tarayıp `src/data/logos.manifest.json` üretir (git'te; dosya yoksa
   arayüz baş harfli rozete düşer). `npm run logos -- --missing` havuzdaki takımlardan logosu
