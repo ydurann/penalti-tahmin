@@ -3,43 +3,79 @@
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { zoneLabel } from "@/game/labels";
-import type { Index, PenaltyAnswer, Player, Zone } from "@/game/types";
+import type { PublicAd } from "@/game/ads";
+import type { BallStyle } from "@/game/ballStyles";
+import { targetLabel, zoneLabel } from "@/game/labels";
+import type { Index, PenaltyAnswer, Player, Target, Zone } from "@/game/types";
+import { useT } from "@/i18n/LocaleProvider";
 import styles from "../Game.module.css";
-import { loadMotion, loadRiggedModel } from "./riggedModel";
-import { createWorld, placeCamera, projectGoal } from "./world";
+import { findMotion } from "./keeperClip";
+import {
+  KEEPER_CATCH_URL,
+  KEEPER_DIVE_URL,
+  KEEPER_IDLE_URL,
+  KEEPER_MODEL_URL,
+  SHOOTER_IDLE_URL,
+  SHOOTER_MODEL_URL,
+  SHOOTER_MOTION_URL,
+} from "./modelUrls";
+import { loadMotion, loadRiggedModel, MODEL_SCALE, type KitColors } from "./riggedModel";
+import { createWorld, placeCamera, projectGoal, type Kits } from "./world";
 
 const INDEXES: Index[] = [0, 1, 2];
-const VERTICAL_FOV = 22;
+const VERTICAL_FOV = 26;
 /** Dik ekranlarda görüş açısını genişletir; kale yanlardan kesilmesin. */
 function verticalFov(aspect: number): number {
   const halfTangent = Math.tan(THREE.MathUtils.degToRad(VERTICAL_FOV / 2));
   return Math.max(VERTICAL_FOV, THREE.MathUtils.radToDeg(2 * Math.atan(halfTangent / aspect)));
 }
 
-const KEEPER_MODEL_URL = "/models/kaleci.fbx";
-const KEEPER_IDLE_URL = "/models/kaleci-orta.fbx";
-const KEEPER_CATCH_URL = "/models/kaleci-orta-yakalama.fbx";
-const KEEPER_COLORS = { surface: "#e0a526", joints: "#2a2d33" };
-const SHOOTER_MODEL_URL = "/models/penaltici.fbx";
-const SHOOTER_COLORS = { surface: "#b3262e", joints: "#f2f2f2" };
+/** "Dışarı" şeridinin kale yüksekliğine oranı; üst direğin hemen üstünde durur. */
+const OUT_STRIP = 0.28;
+/** Yan şeritlerin genişliği üst şeridin yüksekliğine oranla (ekran yüzdeleri farklı eksende). */
+const OUT_SIDE_RATIO = 0.75;
+
+/** Model adresleri `modelUrls.ts`'te; model dosyasında hareket varsa o kullanılır. */
+const KEEPER_COLORS: KitColors = { shirt: "#e0a526", shorts: "#23272e", socks: "#e0a526", joints: "#2a2d33" };
+/** Kaleci penaltıcıdan biraz daha iri görünsün. */
+const KEEPER_SCALE = MODEL_SCALE * 1.1;
+const SHOOTER_COLORS: KitColors = { shirt: "#b3262e", shorts: "#f2f2f2", socks: "#b3262e", joints: "#f2f2f2" };
+
+/** Sırta yazılan ad: soyadı (adın son sözcüğü) büyük harfle, gerçek formalardaki gibi. */
+function shirtName(name: string): string {
+  const words = name.trim().split(/\s+/);
+  return (words[words.length - 1] ?? name).toLocaleUpperCase("en");
+}
 
 type GoalRect = ReturnType<typeof projectGoal>;
 
 interface SceneProps {
-  selected: Zone | null;
+  selected: Target | null;
   shot: PenaltyAnswer | null;
   revealZone: boolean;
-  foot: Player["foot"];
+  player: Player;
+  ball: BallStyle;
+  kits: Kits;
   onGoalRect: (rect: GoalRect) => void;
 }
 
-function Scene({ selected, shot, revealZone, foot, onGoalRect }: SceneProps) {
+function Scene({ selected, shot, revealZone, player, ball, kits, onGoalRect }: SceneProps) {
   const [world] = useState(createWorld);
   const startedAt = useRef<number | null>(null);
   const measuredAspect = useRef(0);
+  const foot = player.foot;
 
   useEffect(() => () => world.dispose(), [world]);
+
+  // Turnuvaya özel top; doku stil kimliğiyle önbellekte durur, aynı turnuvada yeniden üretilmez.
+  useEffect(() => world.setBall(ball), [world, ball]);
+  // Takım formaları: penaltıcı takımının rengi, kaleci ondan ayrışan kit.
+  useEffect(() => world.setKits(kits), [world, kits]);
+  // Formanın sırtı: soyadı ve varsa forma numarası.
+  useEffect(
+    () => world.setShooterPrint({ name: shirtName(player.name), number: player.number }),
+    [world, player.name, player.number],
+  );
 
   // Modeller yoksa veya yüklenemezse oyun kapsül figürlerle devam eder.
   useEffect(() => {
@@ -52,23 +88,50 @@ function Scene({ selected, shot, revealZone, foot, onGoalRect }: SceneProps) {
         return null;
       });
     Promise.all([
-      loadRiggedModel(KEEPER_MODEL_URL, KEEPER_COLORS),
+      loadRiggedModel(KEEPER_MODEL_URL, KEEPER_COLORS, KEEPER_SCALE),
+      motion(KEEPER_DIVE_URL, "dalış"),
       motion(KEEPER_IDLE_URL, "bekleme"),
       motion(KEEPER_CATCH_URL, "yakalama"),
     ])
-      .then(([model, idleClip, catchClip]) => {
+      .then(([model, diveClip, idleClip, catchClip]) => {
+        // Model dosyasında dalış yoksa (yalnızca T-poz) ayrı dosyadaki dalış kullanılır.
+        if (diveClip && !findMotion(model.animations)) model.animations = [diveClip];
         if (active && !world.attachKeeperModel(model, idleClip, catchClip)) {
           console.warn("Kaleci modelinde oynatılacak bir hareket bulunamadı.");
         }
       })
       .catch((error) => console.warn("Kaleci modeli yüklenemedi.", error));
-    loadRiggedModel(SHOOTER_MODEL_URL, SHOOTER_COLORS)
-      .then((model) => {
-        if (active && !world.attachShooterModel(model)) {
+    const shooterMotion = (url: string, name: string) =>
+      loadMotion(url).catch((error) => {
+        console.warn(`Penaltıcı ${name} hareketi yüklenemedi.`, error);
+        return null;
+      });
+    Promise.all([
+      loadRiggedModel(SHOOTER_MODEL_URL, SHOOTER_COLORS, MODEL_SCALE, true),
+      shooterMotion(SHOOTER_MOTION_URL, "koşu-vuruş"),
+      shooterMotion(SHOOTER_IDLE_URL, "bekleme"),
+    ])
+      .then(([model, kickClip, idleClip]) => {
+        if (kickClip && !findMotion(model.animations)) model.animations = [kickClip];
+        if (active && !world.attachShooterModel(model, idleClip)) {
           console.warn("Penaltıcı modelinde oynatılacak bir hareket bulunamadı.");
         }
       })
       .catch((error) => console.warn("Penaltıcı modeli yüklenemedi.", error));
+    return () => {
+      active = false;
+    };
+  }, [world]);
+
+  // Reklam bandı: açık reklamlar sunucudan gelir; alınamazsa bantta oyunun adı kalır.
+  useEffect(() => {
+    let active = true;
+    fetch("/api/ads")
+      .then((r) => (r.ok ? (r.json() as Promise<PublicAd[]>) : []))
+      .then((ads) => {
+        if (active) world.setAds(ads);
+      })
+      .catch(() => undefined);
     return () => {
       active = false;
     };
@@ -100,16 +163,56 @@ function Scene({ selected, shot, revealZone, foot, onGoalRect }: SceneProps) {
 }
 
 interface Pitch3DProps {
-  selected: Zone | null;
+  selected: Target | null;
   shot: PenaltyAnswer | null;
   revealZone: boolean;
   disabled: boolean;
-  foot: Player["foot"];
-  onSelect: (zone: Zone) => void;
+  /** Penaltıcı: ayak (koşu yönü ve aynalama), ad ve numara (forma sırtı). */
+  player: Player;
+  ball: BallStyle;
+  kits: Kits;
+  onSelect: (target: Target) => void;
 }
 
-export function Pitch3D({ selected, shot, revealZone, disabled, foot, onSelect }: Pitch3DProps) {
+export function Pitch3D({ selected, shot, revealZone, disabled, player, ball, kits, onSelect }: Pitch3DProps) {
   const [goalRect, setGoalRect] = useState<GoalRect | null>(null);
+  const t = useT();
+
+  // "Dışarı" üç şerittir (üst, sol, sağ) ve hepsi aynı hedefi seçer; kale ağzına göre yerleşir.
+  const outStrips = goalRect
+    ? [
+        {
+          key: "top",
+          className: styles.outZone,
+          style: {
+            left: goalRect.left,
+            width: goalRect.width,
+            top: `calc(${goalRect.top} - ${goalRect.height} * ${OUT_STRIP})`,
+            height: `calc(${goalRect.height} * ${OUT_STRIP})`,
+          },
+        },
+        {
+          key: "left",
+          className: `${styles.outZone} ${styles.outSide} ${styles.outLeft}`,
+          style: {
+            left: `calc(${goalRect.left} - ${goalRect.height} * ${OUT_STRIP} * ${OUT_SIDE_RATIO})`,
+            width: `calc(${goalRect.height} * ${OUT_STRIP} * ${OUT_SIDE_RATIO})`,
+            top: `calc(${goalRect.top} - ${goalRect.height} * ${OUT_STRIP})`,
+            height: `calc(${goalRect.height} * ${1 + OUT_STRIP})`,
+          },
+        },
+        {
+          key: "right",
+          className: `${styles.outZone} ${styles.outSide}`,
+          style: {
+            left: `calc(${goalRect.left} + ${goalRect.width})`,
+            width: `calc(${goalRect.height} * ${OUT_STRIP} * ${OUT_SIDE_RATIO})`,
+            top: `calc(${goalRect.top} - ${goalRect.height} * ${OUT_STRIP})`,
+            height: `calc(${goalRect.height} * ${1 + OUT_STRIP})`,
+          },
+        },
+      ]
+    : [];
 
   return (
     <div className={styles.pitch3d}>
@@ -125,32 +228,50 @@ export function Pitch3D({ selected, shot, revealZone, disabled, foot, onSelect }
           selected={selected}
           shot={shot}
           revealZone={revealZone}
-          foot={foot}
+          player={player}
+          ball={ball}
+          kits={kits}
           onGoalRect={setGoalRect}
         />
       </Canvas>
 
       {/* Kamera vuruşta hareket ettiği için bölge butonları yalnızca tahmin sırasında durur. */}
       {goalRect && !shot && (
-        <div className={styles.zones} style={goalRect}>
-          {INDEXES.flatMap((row) =>
-            INDEXES.map((col) => {
-              const zone: Zone = { col, row };
-              const isSelected = selected?.col === col && selected?.row === row;
-              return (
-                <button
-                  key={`${col}-${row}`}
-                  type="button"
-                  className={styles.zone}
-                  disabled={disabled}
-                  aria-pressed={isSelected}
-                  aria-label={zoneLabel(zone)}
-                  onClick={() => onSelect(zone)}
-                />
-              );
-            }),
-          )}
-        </div>
+        <>
+          {outStrips.map((strip) => (
+            <button
+              key={strip.key}
+              type="button"
+              className={selected === "out" ? `${strip.className} ${styles.zoneSelected}` : strip.className}
+              style={strip.style}
+              disabled={disabled}
+              aria-pressed={selected === "out"}
+              aria-label={targetLabel(t, "out")}
+              onClick={() => onSelect("out")}
+            >
+              {t("zone.out")}
+            </button>
+          ))}
+          <div className={styles.zones} style={goalRect}>
+            {INDEXES.flatMap((row) =>
+              INDEXES.map((col) => {
+                const zone: Zone = { col, row };
+                const isSelected = selected !== "out" && selected?.col === col && selected?.row === row;
+                return (
+                  <button
+                    key={`${col}-${row}`}
+                    type="button"
+                    className={styles.zone}
+                    disabled={disabled}
+                    aria-pressed={isSelected}
+                    aria-label={zoneLabel(t, zone)}
+                    onClick={() => onSelect(zone)}
+                  />
+                );
+              }),
+            )}
+          </div>
+        </>
       )}
     </div>
   );

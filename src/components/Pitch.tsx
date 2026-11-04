@@ -1,5 +1,7 @@
-import { zoneLabel } from "@/game/labels";
-import type { Index, PenaltyAnswer, ShotType, Zone } from "@/game/types";
+import type { BallStyle } from "@/game/ballStyles";
+import { targetLabel, zoneLabel } from "@/game/labels";
+import type { Index, PenaltyAnswer, ShotType, Target, Zone } from "@/game/types";
+import { useT } from "@/i18n/LocaleProvider";
 import styles from "./Game.module.css";
 
 const INDEXES: Index[] = [0, 1, 2];
@@ -8,6 +10,8 @@ const INDEXES: Index[] = [0, 1, 2];
 const GOAL = { x: 120, y: 40, width: 400, height: 200 };
 const SPOT = { x: 320, y: 312 };
 const FLIGHT_SECONDS: Record<ShotType, number> = { power: 0.4, placed: 0.65, panenka: 1.05 };
+/** Kaçan topun kale çerçevesinin ne kadar dışına gittiği. */
+const MISS_GAP = 28;
 
 function zoneCenter({ col, row }: Zone) {
   return {
@@ -16,21 +20,34 @@ function zoneCenter({ col, row }: Zone) {
   };
 }
 
-const sameZone = (a: Zone | null, b: Zone | null | undefined) =>
-  !!a && !!b && a.col === b.col && a.row === b.row;
+/** Kaçan top üst satırda üst direğin üstünden, yoksa direğin yanından geçer. */
+function targetPoint(answer: PenaltyAnswer) {
+  const point = zoneCenter(answer.zone);
+  if (answer.outcome !== "missed") return point;
+  if (answer.zone.row === 0 || answer.zone.col === 1) return { x: point.x, y: GOAL.y - MISS_GAP };
+  return { x: answer.zone.col === 0 ? GOAL.x - MISS_GAP : GOAL.x + GOAL.width + MISS_GAP, y: point.y };
+}
+
+const sameZone = (a: Target | null, b: Zone | null | undefined) =>
+  !!a && a !== "out" && !!b && a.col === b.col && a.row === b.row;
 
 interface PitchProps {
-  selected: Zone | null;
+  selected: Target | null;
   /** Vuruş başladığında dolu olur; top ve kaleci buna göre hareket eder. */
   shot: PenaltyAnswer | null;
   /** Animasyon bitince gerçek bölgeyi vurgular. */
   revealZone: boolean;
   disabled: boolean;
-  onSelect: (zone: Zone) => void;
+  /** Turnuvaya özel top; 2D sahada yalnızca beşgen rengi kullanılır. */
+  ball: BallStyle;
+  onSelect: (target: Target) => void;
 }
 
-export function Pitch({ selected, shot, revealZone, disabled, onSelect }: PitchProps) {
-  const target = shot && zoneCenter(shot.zone);
+const classes = (...names: (string | false)[]) => names.filter(Boolean).join(" ");
+
+export function Pitch({ selected, shot, revealZone, disabled, ball, onSelect }: PitchProps) {
+  const t = useT();
+  const target = shot && targetPoint(shot);
   const ballStyle = target
     ? {
         transform: `translate(${target.x - SPOT.x}px, ${target.y - SPOT.y}px) scale(0.6)`,
@@ -46,6 +63,9 @@ export function Pitch({ selected, shot, revealZone, disabled, onSelect }: PitchP
         transition: "transform .5s cubic-bezier(.2,.7,.3,1)",
       }
     : undefined;
+
+  const outSelected = selected === "out";
+  const outReal = revealZone && shot?.outcome === "missed";
 
   return (
     <div className={styles.pitch}>
@@ -78,31 +98,54 @@ export function Pitch({ selected, shot, revealZone, disabled, onSelect }: PitchP
 
         <circle cx={SPOT.x} cy={SPOT.y + 14} r="3" fill="#ffffff" />
         <g className={styles.ball} style={ballStyle}>
-          <circle cx={SPOT.x} cy={SPOT.y} r="12" fill="#ffffff" stroke="#23272e" strokeWidth="1.5" />
-          <circle cx={SPOT.x} cy={SPOT.y} r="4" fill="#23272e" />
+          <circle cx={SPOT.x} cy={SPOT.y} r="12" fill={ball.hex} stroke={ball.seam} strokeWidth="1.5" />
+          <circle cx={SPOT.x} cy={SPOT.y} r="4" fill={ball.pentagons[0]} />
         </g>
       </svg>
 
+      {/* "Dışarı" üç şerit: üst, sol, sağ; hepsi aynı hedef. */}
+      {[
+        ["top", styles.outTopFixed],
+        ["left", `${styles.outLeftFixed} ${styles.outSide} ${styles.outLeft}`],
+        ["right", `${styles.outRightFixed} ${styles.outSide}`],
+      ].map(([key, extra]) => (
+        <button
+          key={key}
+          type="button"
+          className={classes(
+            styles.outZone,
+            extra,
+            outSelected && styles.zoneSelected,
+            outReal && styles.zoneReal,
+            outReal && outSelected && styles.zoneHit,
+          )}
+          disabled={disabled}
+          aria-pressed={outSelected}
+          aria-label={targetLabel(t, "out")}
+          onClick={() => onSelect("out")}
+        >
+          {t("zone.out")}
+        </button>
+      ))}
       <div className={styles.zones}>
         {INDEXES.flatMap((row) =>
           INDEXES.map((col) => {
             const zone: Zone = { col, row };
             const isSelected = sameZone(selected, zone);
-            const isReal = revealZone && sameZone(shot?.zone ?? null, zone);
-            const className = [
-              styles.zone,
-              isSelected ? styles.zoneSelected : "",
-              isReal ? styles.zoneReal : "",
-              isReal && isSelected ? styles.zoneHit : "",
-            ].join(" ");
+            const isReal = revealZone && shot?.outcome !== "missed" && sameZone(zone, shot?.zone);
             return (
               <button
                 key={`${col}-${row}`}
                 type="button"
-                className={className}
+                className={classes(
+                  styles.zone,
+                  isSelected && styles.zoneSelected,
+                  isReal && styles.zoneReal,
+                  isReal && isSelected && styles.zoneHit,
+                )}
                 disabled={disabled}
                 aria-pressed={isSelected}
-                aria-label={zoneLabel(zone)}
+                aria-label={zoneLabel(t, zone)}
                 onClick={() => onSelect(zone)}
               />
             );

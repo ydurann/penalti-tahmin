@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.claude
+data
+data-src
+assets-src
+public/models
+public/logos
+coverage
+*.log
+.env*
+!.env.production.example
+Dockerfile
+docker-compose.yml
+DEPLOY.md

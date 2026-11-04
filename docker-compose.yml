@@ -1,0 +1,41 @@
+# Penaltı Tahmin — tek sunucuda uygulama + Caddy (HTTPS). Kurulum: DEPLOY.md
+services:
+  app:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+        NEXT_PUBLIC_ADSENSE_CLIENT: ${NEXT_PUBLIC_ADSENSE_CLIENT:-}
+        NEXT_PUBLIC_ADSENSE_SLOT_INTRO: ${NEXT_PUBLIC_ADSENSE_SLOT_INTRO:-}
+        NEXT_PUBLIC_ADSENSE_SLOT_FINISH: ${NEXT_PUBLIC_ADSENSE_SLOT_FINISH:-}
+        NEXT_PUBLIC_ADSENSE_SLOT_CONTENT: ${NEXT_PUBLIC_ADSENSE_SLOT_CONTENT:-}
+    env_file: .env.production
+    restart: unless-stopped
+    volumes:
+      # Kalıcı veri: sıralamalar, challenge haftaları, reklamlar, elle girilen penaltılar.
+      - ./data:/app/data
+      # Git dışı büyük dosyalar; imaj yeniden kurulmadan güncellenebilir.
+      - ./public/models:/app/public/models:ro
+      - ./public/logos:/app/public/logos:ro
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

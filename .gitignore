@@ -43,3 +43,12 @@ next-env.d.ts
 # ham Mixamo dosyalari dagitilmamali
 /assets-src/
 /public/models/
+
+# StatsBomb ve FotMob ham veri onbellegi (lisans geregi dagitilmaz)
+/data-src/
+
+# haftalik challenge tablolari (calisma verisi)
+/data/
+
+# takim logolari marka hakkiyla korunur; dosyalari kullanici koyar
+/public/logos/

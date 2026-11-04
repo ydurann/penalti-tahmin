@@ -28,8 +28,13 @@ const CATCH_REACH = 0.25;
 /** El kemikleri bilekte durur; top avuçların arasında, biraz öndedir. */
 const CATCH_HOLD_FORWARD = 0.1;
 
-/** FBX dosyalarında hareketin yanında boş bir kayıt da bulunur. */
-export const findMotion = (clips: THREE.AnimationClip[]) => clips.find((clip) => clip.tracks.length > 0);
+/**
+ * FBX dosyalarında hareketin yanında boş bir "Take 001" kaydı bulunur; Mixamo karakter
+ * dosyalarında ise yalnızca 0,03 sn'lik T-poz kaydı vardır. İkisi de hareket sayılmaz.
+ */
+const MIN_MOTION_SECONDS = 0.1;
+export const findMotion = (clips: THREE.AnimationClip[]) =>
+  clips.find((clip) => clip.tracks.length > 0 && clip.duration > MIN_MOTION_SECONDS);
 
 /**
  * Kalçanın yol verisini kaleye uyarlar: hareket 1,8 m öne çıktığı için öne gidiş kısılır,

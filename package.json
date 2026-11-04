@@ -7,10 +7,16 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "import:statsbomb": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-statsbomb.mts",
+    "import:fotmob": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-fotmob.mts",
+    "logos": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/logos-manifest.mts",
+    "logos:fetch": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/team-logos.mts && npm run logos",
+    "flags": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/flags.mts"
   },
   "dependencies": {
     "@react-three/fiber": "^9.8.2",
+    "flag-icons": "^7.5.0",
     "next": "^16.4.3",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

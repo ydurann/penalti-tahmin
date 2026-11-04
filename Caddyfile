@@ -1,0 +1,13 @@
+# HTTPS (Let's Encrypt) ve ters vekil. SITE_DOMAIN docker-compose ortamından gelir.
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	# Model ve logo dosyaları değişmez; tarayıcı bir yıl önbellekte tutsun.
+	@assets path /models/* /logos/* /flags/* /_next/static/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	# Oda yayını (SSE) için yanıt tamponlanmadan akar.
+	reverse_proxy app:3000 {
+		flush_interval -1
+	}
+}

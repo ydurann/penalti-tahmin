@@ -9,8 +9,11 @@ import {
   GOAL,
   KEEPER_Z,
   KICK_AT,
+  missPoint,
+  outPoint,
   shotDurationMs,
   SPOT_Z,
+  targetPoint,
   zoneCenter,
 } from "./animation";
 
@@ -68,11 +71,49 @@ describe("ballPosition", () => {
   );
 
   it("top uçuş boyunca yerin altına inmez", () => {
-    for (const answer of CASES) {
+    for (const answer of [...CASES, ...MISSES]) {
       for (let t = 0; t < 3; t += 0.02) {
         expect(ballPosition(t, answer)[1]).toBeGreaterThanOrEqual(BALL_RADIUS - 1e-9);
       }
     }
+  });
+
+  const MISSES = INDEXES.flatMap((col) =>
+    INDEXES.flatMap((row) => SHOTS.map((shot) => answerOf(col, row, shot, "missed"))),
+  );
+
+  it.each(MISSES.map((a) => [a.zone.col, a.zone.row, a.shot, a] as const))(
+    "kaçan %i-%i, %s: çerçevenin dışından geçer, arkada yerde durur",
+    (_col, _row, shot, answer) => {
+      const [tx, ty] = missPoint(answer);
+      const arrival = ballPosition(KICK_AT + flightTime(shot), answer);
+      expect(arrival[0]).toBeCloseTo(tx, 5);
+      expect(arrival[1]).toBeCloseTo(ty, 5);
+      expect(arrival[2]).toBeCloseTo(0, 5);
+      expect(Math.abs(tx) > GOAL.width / 2 || ty > GOAL.height).toBe(true);
+
+      const final = ballPosition(shotDurationMs(answer) / 1000 + 2, answer);
+      expect(final[1]).toBeCloseTo(BALL_RADIUS, 5);
+      expect(final[2]).toBeLessThan(-3);
+      expect(Math.abs(final[0])).toBeGreaterThanOrEqual(Math.abs(tx));
+    },
+  );
+
+  it("kaçan top çizgiyi geçtikten sonra geri gelmez", () => {
+    const miss = answerOf(0, 1, "power", "missed");
+    let previous = SPOT_Z;
+    for (let t = KICK_AT; t <= 4; t += 0.01) {
+      const z = ballPosition(t, miss)[2];
+      expect(z).toBeLessThanOrEqual(previous + 1e-6);
+      previous = z;
+    }
+  });
+
+  it("hedef nokta kaleyi bulan vuruşta bölge, kaçanda dışarısıdır", () => {
+    expect(targetPoint(answerOf(0, 2, "placed", "goal"))).toEqual(zoneCenter({ col: 0, row: 2 }));
+    expect(targetPoint(answerOf(2, 1, "placed", "missed"))[0]).toBeGreaterThan(GOAL.width / 2);
+    expect(missPoint(answerOf(1, 2, "power", "missed"))[1]).toBeGreaterThan(GOAL.height);
+    expect(outPoint()[1]).toBeGreaterThan(GOAL.height);
   });
 
   it("panenka sert vuruştan daha yavaş ve daha yüksek gider", () => {

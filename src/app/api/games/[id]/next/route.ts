@@ -8,14 +8,14 @@ export async function POST(
 ) {
   const game = getGame((await params).id);
   if (!game) {
-    return NextResponse.json({ error: "Oyun bulunamadı." }, { status: 404 });
+    return NextResponse.json({ error: "Oyun bulunamadı.", code: "game.notFound" }, { status: 404 });
   }
 
   try {
     return NextResponse.json(nextRound(game, Date.now()));
   } catch (error) {
     if (error instanceof GameFlowError) {
-      return NextResponse.json({ error: error.message }, { status: 409 });
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 409 });
     }
     throw error;
   }

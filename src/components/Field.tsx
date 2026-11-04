@@ -2,9 +2,11 @@
 
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import type { PenaltyAnswer, Player, Zone } from "@/game/types";
+import type { BallStyle } from "@/game/ballStyles";
+import type { PenaltyAnswer, Player, Target } from "@/game/types";
 import styles from "./Game.module.css";
 import { Pitch } from "./Pitch";
+import type { Kits } from "./pitch3d/world";
 
 // three.js büyük olduğu için yalnızca oyun başlayınca yüklenir.
 const Pitch3D = dynamic(() => import("./pitch3d/Pitch3D").then((m) => m.Pitch3D), {
@@ -24,16 +26,21 @@ function supportsWebGL(): boolean {
 }
 
 interface FieldProps {
-  selected: Zone | null;
+  selected: Target | null;
   shot: PenaltyAnswer | null;
   revealZone: boolean;
   disabled: boolean;
-  foot: Player["foot"];
-  onSelect: (zone: Zone) => void;
+  /** Penaltıcı: ayak, ad ve forma numarası (3D sahnede forma sırtına yazılır). */
+  player: Player;
+  /** Turnuvaya özel top görünümü. */
+  ball: BallStyle;
+  /** Penaltıcının takım forması ve kaleci kiti (yalnızca 3D). */
+  kits: Kits;
+  onSelect: (target: Target) => void;
 }
 
 /** 3D saha; WebGL desteklemeyen cihazlarda 2D sahaya düşer. */
-export function Field({ foot, ...props }: FieldProps) {
+export function Field({ player, ball, kits, ...props }: FieldProps) {
   const [webgl] = useState(supportsWebGL);
-  return webgl ? <Pitch3D foot={foot} {...props} /> : <Pitch {...props} />;
+  return webgl ? <Pitch3D player={player} ball={ball} kits={kits} {...props} /> : <Pitch ball={ball} {...props} />;
 }

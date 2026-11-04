@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import type { PenaltyAnswer, Player, Zone } from "@/game/types";
+import { isExactTarget } from "@/game/scoring";
+import type { PenaltyAnswer, Player, Target } from "@/game/types";
 import {
   backNetZ,
   BALL_RADIUS,
@@ -9,14 +10,26 @@ import {
   flightTime,
   GOAL,
   KICK_AT,
+  outPoint,
+  targetPoint,
   zoneCenter,
 } from "./animation";
 import { createHumanoid, poseKeeper, poseShooter } from "./humanoid";
 import { createKeeperRig, type KeeperRig } from "./keeperClip";
 import { CLOTH_STEP, createGoalNetCloth } from "./netCloth";
-import { MODEL_SCALE } from "./riggedModel";
+import { applyKit, type ShirtPrint } from "./riggedModel";
+import type { Kit } from "@/game/kits";
+
+export interface Kits {
+  shooter: Kit;
+  keeper: Kit;
+}
 import { createShooterRig, type ShooterRig } from "./shooterClip";
+import type { PublicAd } from "@/game/ads";
+import { CLASSIC_BALL, type BallStyle } from "@/game/ballStyles";
 import {
+  AD_BAND,
+  createAdBandTexture,
   createAdBoardTexture,
   createBallTextures,
   createCrowdTexture,
@@ -90,7 +103,7 @@ function createStands() {
   const slope = crowdFrom.distanceTo(crowdTo);
   const crowd = new THREE.Mesh(
     new THREE.PlaneGeometry(150, slope),
-    new THREE.MeshBasicMaterial({ map: createCrowdTexture(), color: 0x70747c }),
+    new THREE.MeshBasicMaterial({ map: createCrowdTexture(), color: 0x9a9ea6 }),
   );
   crowd.position.copy(crowdFrom).add(crowdTo).multiplyScalar(0.5);
   crowd.rotation.x = -Math.atan2(crowdFrom.z - crowdTo.z, crowdTo.y - crowdFrom.y);
@@ -102,6 +115,15 @@ function createStands() {
   );
   wall.position.set(0, 0.8, -8.9);
   group.add(wall);
+
+  // Reklam bandı: duvarın önünde, mavi panonun üst kenarından tribüne kadar. İçerik sonradan
+  // `setAds` ile gelir; o zamana kadar oyunun adı yazılıdır.
+  const adBand = new THREE.Mesh(
+    new THREE.PlaneGeometry(AD_BAND.width, AD_BAND.height),
+    new THREE.MeshBasicMaterial({ map: createAdBandTexture([]) }),
+  );
+  adBand.position.set(0, AD_BAND.bottom + AD_BAND.height / 2, AD_BAND.z);
+  group.add(adBand);
 
   const roof = new THREE.Mesh(
     new THREE.BoxGeometry(150, 0.6, 16),
@@ -119,7 +141,25 @@ function createStands() {
     group.add(lamp);
   }
 
-  return group;
+  return { group, adBand };
+}
+
+/** Görselleri yükler (yüklenemeyen atlanır, yazısı kalır) ve bant dokusunu kurar. */
+async function loadAdBand(ads: PublicAd[]): Promise<THREE.CanvasTexture> {
+  const items = await Promise.all(
+    ads.map(async ({ text, imageUrl }) => {
+      if (!imageUrl) return { text, image: null };
+      const image = new Image();
+      image.src = imageUrl;
+      try {
+        await image.decode();
+        return { text, image: image.naturalWidth > 0 && image.naturalHeight > 0 ? image : null };
+      } catch {
+        return { text, image: null };
+      }
+    }),
+  );
+  return createAdBandTexture(items.filter((item) => item.text || item.image));
 }
 
 function pushSegment(target: number[], a: number[], b: number[]) {
@@ -253,11 +293,10 @@ function createHighlight() {
   mesh.add(outline);
   mesh.visible = false;
 
-  const show = (zone: Zone | null, color: number) => {
-    mesh.visible = zone !== null;
-    if (!zone) return;
-    const [x, y] = zoneCenter(zone);
-    mesh.position.set(x, y, 0.03);
+  const show = (point: [x: number, y: number] | null, color: number) => {
+    mesh.visible = point !== null;
+    if (!point) return;
+    mesh.position.set(point[0], point[1], 0.03);
     fill.color.setHex(color);
     edge.color.setHex(color);
   };
@@ -269,7 +308,7 @@ export interface FrameInput {
   /** Vuruş başladıktan sonra geçen süre; başlamadıysa null. */
   t: number | null;
   shot: PenaltyAnswer | null;
-  selected: Zone | null;
+  selected: Target | null;
   revealZone: boolean;
   foot: Player["foot"];
   delta: number;
@@ -290,22 +329,56 @@ export function createWorld() {
   fillLight.position.set(-10, 14, 8);
   group.add(hemi, sun, sun.target, fillLight);
 
-  group.add(createGround(), createStands(), createFrame(), createSideNets());
+  const stands = createStands();
+  group.add(createGround(), stands.group, createFrame(), createSideNets());
   const netCloth = createNetCloth();
+
+  /** Bandın kayma hızı, metre/saniye; dokunun `offset.x`'i şerit genişliğine göre ilerler. */
+  const AD_SPEED = 1.6;
+  let adRequest = 0;
+  const setAds = (ads: PublicAd[]) => {
+    const request = ++adRequest;
+    void loadAdBand(ads).then((texture) => {
+      const material = stands.adBand.material as THREE.MeshBasicMaterial;
+      if (request !== adRequest) {
+        texture.dispose();
+        return;
+      }
+      material.map?.dispose();
+      material.map = texture;
+      material.needsUpdate = true;
+    });
+  };
   group.add(netCloth.mesh);
 
-  const ballTextures = createBallTextures();
-  const ball = new THREE.Mesh(
-    new THREE.SphereGeometry(BALL_RADIUS, 48, 32),
-    new THREE.MeshStandardMaterial({
-      map: ballTextures.map,
-      bumpMap: ballTextures.bump,
-      bumpScale: 1.5,
-      roughness: 0.38,
-    }),
-  );
+  // Top dokuları turnuvaya göre değişir; üretilenler stil kimliğiyle önbellekte tutulur.
+  const ballTextures = new Map<string, ReturnType<typeof createBallTextures>>();
+  const ballTexturesFor = (style: BallStyle) => {
+    let textures = ballTextures.get(style.id);
+    if (!textures) {
+      textures = createBallTextures(style);
+      ballTextures.set(style.id, textures);
+    }
+    return textures;
+  };
+  const initialBall = ballTexturesFor(CLASSIC_BALL);
+  const ballMaterial = new THREE.MeshStandardMaterial({
+    map: initialBall.map,
+    bumpMap: initialBall.bump,
+    bumpScale: 1.5,
+    roughness: 0.38,
+  });
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(BALL_RADIUS, 48, 32), ballMaterial);
   ball.castShadow = true;
   group.add(ball);
+
+  const setBall = (style: BallStyle) => {
+    const textures = ballTexturesFor(style);
+    if (ballMaterial.map === textures.map) return;
+    ballMaterial.map = textures.map;
+    ballMaterial.bumpMap = textures.bump;
+    ballMaterial.needsUpdate = true;
+  };
 
   const keeper = createHumanoid({
     shirt: "#e0a526",
@@ -326,29 +399,57 @@ export function createWorld() {
   group.add(keeper.root, shooter.root);
 
   let keeperRig: KeeperRig | null = null;
+  let keeperModel: THREE.Group | null = null;
+  let shooterModel: THREE.Group | null = null;
+  // Forma renkleri tur başına değişir; model sonradan yüklenirse bekleyen kit uygulanır.
+  let kits: Kits = { shooter: { shirt: "#b3262e", shorts: "#f2f2f2", socks: "#b3262e" }, keeper: { shirt: "#e0a526", shorts: "#23272e", socks: "#e0a526" } };
 
-  /** Yüklenen modeli, içindeki dalışı, bekleme ve yakalama hareketini kapsül kalecinin yerine koyar. */
+  /** Yüklenen modeli, dalışı, bekleme ve yakalama hareketini kapsül kalecinin yerine koyar. */
   const attachKeeperModel = (
     model: THREE.Group,
     idleClip: THREE.AnimationClip | null,
     catchClip: THREE.AnimationClip | null,
   ): boolean => {
-    keeperRig = createKeeperRig(model, MODEL_SCALE, idleClip, catchClip);
+    keeperRig = createKeeperRig(model, model.scale.y, idleClip, catchClip);
     if (!keeperRig) return false;
+    keeperModel = model;
+    applyKit(model, kits.keeper);
     group.add(model);
     keeper.root.visible = false;
     return true;
   };
 
   let shooterRig: ShooterRig | null = null;
+  // Formanın sırtındaki ad ve numara; sol ayaklı oyuncuda model aynalandığı için yazı da ters basılır.
+  let shooterPrint: ShirtPrint | null = null;
+  let printedFoot: Player["foot"] = "right";
 
-  /** Yüklenen modeli ve içindeki koşu ile vuruşu kapsül penaltıcının yerine koyar. */
-  const attachShooterModel = (model: THREE.Group): boolean => {
-    shooterRig = createShooterRig(model, MODEL_SCALE);
+  const repaintShooter = () => {
+    if (shooterModel) applyKit(shooterModel, kits.shooter, { ...shooterPrint, mirrored: printedFoot === "left" });
+  };
+
+  /** Yüklenen modeli, koşu-vuruşu ve varsa bekleme hareketini kapsül penaltıcının yerine koyar. */
+  const attachShooterModel = (model: THREE.Group, idleClip: THREE.AnimationClip | null = null): boolean => {
+    shooterRig = createShooterRig(model, model.scale.y, idleClip);
     if (!shooterRig) return false;
+    shooterModel = model;
+    repaintShooter();
     group.add(model);
     shooter.root.visible = false;
     return true;
+  };
+
+  /** Penaltıcının takım forması ve ona göre seçilen kaleci kiti. */
+  const setKits = (next: Kits) => {
+    kits = next;
+    repaintShooter();
+    if (keeperModel) applyKit(keeperModel, next.keeper);
+  };
+
+  /** Formanın sırtına yazılacak ad ve numara (tur başına değişir). */
+  const setShooterPrint = (print: ShirtPrint | null) => {
+    shooterPrint = print;
+    repaintShooter();
   };
 
   const selectedMark = createHighlight();
@@ -360,8 +461,12 @@ export function createWorld() {
 
     if (keeperRig) keeperRig.update(clock, t, shot);
     else poseKeeper(keeper, clock, t, shot);
-    if (shooterRig) shooterRig.update(t, foot);
+    if (shooterRig) shooterRig.update(clock, t, foot);
     else poseShooter(shooter, clock, t, foot);
+    if (foot !== printedFoot) {
+      printedFoot = foot;
+      repaintShooter();
+    }
 
     if (animating) {
       // Ortada yakalanan top sekmez, kalecinin ellerinde kalır.
@@ -376,13 +481,22 @@ export function createWorld() {
     }
     netCloth.update(t, shot);
 
-    const real = revealZone && shot ? shot.zone : null;
-    const hit = !!real && !!selected && real.col === selected.col && real.row === selected.row;
-    selectedMark.show(hit ? null : selected, COLORS.selected);
+    // Reklam bandı soldan sağa akar: doku kaydırması sahne metresi cinsinden sabit hızda.
+    const adMap = (stands.adBand.material as THREE.MeshBasicMaterial).map;
+    if (adMap) adMap.offset.x = (adMap.offset.x - (delta * AD_SPEED * adMap.repeat.x) / AD_BAND.width + 1) % 1;
+
+    const real = revealZone && shot ? targetPoint(shot) : null;
+    const hit = revealZone && !!shot && selected !== null && isExactTarget(selected, shot);
+    const chosen = selected === null ? null : selected === "out" ? outPoint() : zoneCenter(selected);
+    selectedMark.show(hit ? null : chosen, COLORS.selected);
     realMark.show(real, hit ? COLORS.hit : COLORS.real);
   };
 
   const dispose = () => {
+    for (const { map, bump } of ballTextures.values()) {
+      map.dispose();
+      bump.dispose();
+    }
     group.traverse((object) => {
       const { geometry, material } = object as THREE.Mesh;
       geometry?.dispose();
@@ -396,17 +510,19 @@ export function createWorld() {
     });
   };
 
-  return { group, update, dispose, attachKeeperModel, attachShooterModel };
+  return { group, update, dispose, attachKeeperModel, attachShooterModel, setAds, setBall, setKits, setShooterPrint };
 }
 
-// Kamera penaltıcının biraz gerisinde; dar açıyla kale büyük, yakındaki penaltıcı küçük görünür.
-const CAMERA = { x: 0, y: 1.7, z: 20, lookY: 0.45 };
+// Kamera penaltıcının gerisinde ve yukarıda, hafif aşağı bakar: ceza sahasının ön çizgisi
+// (z=16,5) kadrajın altına girer, penaltıcı koşuya başladığı yerde kadraja sığar.
+const CAMERA = { x: 0, y: 4.4, z: 28, lookY: -0.3 };
 
 /** Tahmin sırasında sabit durur, vuruşta penaltıcının karşı tarafına süzülür. */
 export function placeCamera(camera: THREE.Camera, t: number | null, foot: Player["foot"]) {
   const move = t === null ? 0 : easeOut(clamp01(t / 1.1));
-  const away = foot === "right" ? 1.7 : -1.7;
-  camera.position.set(CAMERA.x + away * move, CAMERA.y + 0.9 * move, CAMERA.z - 0.8 * move);
+  // Kamera uzakta olduğu için yana ve yukarı kayış biraz daha büyük; penaltıcı kaleyi örtmesin.
+  const away = foot === "right" ? 2.4 : -2.4;
+  camera.position.set(CAMERA.x + away * move, CAMERA.y + 1.2 * move, CAMERA.z - 0.8 * move);
   camera.lookAt(0, CAMERA.lookY, 0);
   camera.updateMatrixWorld();
 }

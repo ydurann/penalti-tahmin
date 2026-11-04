@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "penalti-tahmin-dev",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\npm.cmd",
+      "runtimeArgs": ["run", "dev", "--", "-p", "3457"],
+      "port": 3457
+    },
+    {
+      "name": "penalti-tahmin-dev-3458",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\npm.cmd",
+      "runtimeArgs": ["run", "dev", "--", "-p", "3458"],
+      "port": 3458
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { KICK_AT, SPOT_Z } from "./animation";
-import { createShooterRig, SHOOTER_CONTACT_TIME, shooterClipTime } from "./shooterClip";
+import { alignIdleToRun, createShooterRig, SHOOTER_CONTACT_TIME, shooterClipTime } from "./shooterClip";
 
 describe("shooterClipTime", () => {
   it("tahmin sırasında ilk karede bekler", () => {
@@ -49,7 +49,7 @@ describe("createShooterRig", () => {
   it.each(["right", "left"] as const)("%s ayakta vuruş anında ayak ucu topun hemen arkasındadır", (foot) => {
     const { model, toe } = shooterModel();
     const rig = createShooterRig(model, 0.01)!;
-    rig.update(KICK_AT, foot);
+    rig.update(0, KICK_AT, foot);
     // Koşu çapraz olduğu için ayak ucu topun 12 cm arkasında, koşu doğrultusundadır.
     const at = toeAt(model, toe);
     expect(Math.hypot(at.x, at.z - SPOT_Z)).toBeCloseTo(0.12, 5);
@@ -63,15 +63,50 @@ describe("createShooterRig", () => {
 
     // Kalça modelin merkezinde; vuruşta ayak ucu 1 m sağında olduğundan gövde topun yanındadır,
     // çapraz koşu onu biraz daha dışarı taşır.
-    rig.update(null, "right");
+    rig.update(0, null, "right");
     expect(model.position.x).toBeLessThan(-1);
     const start = toeAt(model, toe);
-    rig.update(null, "left");
+    rig.update(0, null, "left");
     expect(model.position.x).toBeGreaterThan(1);
     expect(toeAt(model, toe).x).toBeCloseTo(-start.x, 5);
 
     expect(start.z).toBeGreaterThan(SPOT_Z + 1);
-    rig.update(KICK_AT, "right");
+    rig.update(0, KICK_AT, "right");
     expect(toeAt(model, toe).z).toBeLessThan(start.z);
+  });
+
+  describe("bekleme hareketi", () => {
+    /** Kalça kendi yerinde 95–100 arasında salınır; x ve z koşunun başından uzakta. */
+    const idleClip = () =>
+      new THREE.AnimationClip("bekleme", 2, [
+        new THREE.VectorKeyframeTrack("mixamorigHips.position", [0, 1, 2], [40, 95, -30, 40, 100, -30, 40, 95, -30]),
+      ]);
+
+    it("kalçayı koşunun başladığı noktaya taşır, yüksekliği korur", () => {
+      const run = shooterModel().model.animations[0];
+      const aligned = alignIdleToRun(idleClip(), run);
+      expect(Array.from(aligned.tracks[0].values)).toEqual([0, 95, 0, 0, 100, 0, 0, 95, 0]);
+    });
+
+    it("tahmin sırasında döngüde oynar, vuruş başlayınca koşuya geçer", () => {
+      const { model } = shooterModel();
+      const hips = model.getObjectByName("mixamorigHips")!;
+      const rig = createShooterRig(model, 0.01, idleClip())!;
+      rig.update(1, null, "right");
+      expect(hips.position.y).toBeCloseTo(100, 3);
+      rig.update(0, null, "right");
+      expect(hips.position.y).toBeCloseTo(95, 3);
+      // Geçiş bittikten sonra yalnızca koşu: kalça öne gitmiş, yükseklik koşudaki 90.
+      rig.update(0, 1, "right");
+      expect(hips.position.y).toBeCloseTo(90, 3);
+      expect(hips.position.z).toBeGreaterThan(100);
+    });
+
+    it("bekleme verilmezse koşunun ilk karesinde durur", () => {
+      const { model } = shooterModel();
+      const hips = model.getObjectByName("mixamorigHips")!;
+      createShooterRig(model, 0.01)!.update(5, null, "right");
+      expect(hips.position.z).toBeCloseTo(0, 3);
+    });
   });
 });
